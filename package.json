@@ -18,16 +18,16 @@
     "recharts": "2.15.0",
     "clsx": "2.1.1",
     "tailwind-merge": "2.6.0",
-    "class-variance-authority": "0.7.1"
-  },
-  "devDependencies": {
+    "class-variance-authority": "0.7.1",
     "typescript": "5.7.3",
     "@types/node": "22.10.6",
     "@types/react": "19.0.7",
     "@types/react-dom": "19.0.3",
     "tailwindcss": "3.4.17",
     "postcss": "8.5.1",
-    "autoprefixer": "10.4.20",
+    "autoprefixer": "10.4.20"
+  },
+  "devDependencies": {
     "eslint": "9.18.0",
     "eslint-config-next": "15.1.6"
   }
