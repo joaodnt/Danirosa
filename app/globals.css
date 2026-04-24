@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+  background-color: #0A0D0A;
+  color: #DED2C6;
+  -webkit-font-smoothing: antialiased;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+}
+
+* {
+  border-color: #232011;
+}
+
+::selection {
+  background: rgba(200, 161, 75, 0.3);
+  color: #DED2C6;
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #3A4A2E;
+    border-radius: 3px;
+  }
+}

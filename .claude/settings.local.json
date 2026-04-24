@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npx --yes create-next-app@latest . --typescript --tailwind --app --eslint --no-src-dir --import-alias \"@/*\" --use-npm --yes)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/login)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code} -> %{redirect_url}\\\\n\" http://localhost:3000/)",
+      "Bash(netstat -ano)",
+      "Bash(tasklist /FI \"PID eq 29292\")",
+      "Bash(wmic process *)",
+      "Bash(tasklist //FI \"PID eq 29292\")",
+      "Bash(tasklist //FI \"IMAGENAME eq node.exe\")",
+      "Bash(curl -s http://localhost:3000/login)",
+      "Bash(curl -s http://localhost:3001/login)",
+      "Bash(curl -sS http://localhost:3001/login -o /tmp/page.html)",
+      "PowerShell($r = Invoke-WebRequest http://localhost:3001/login -UseBasicParsing; $r.Links | Where-Object { $_.href -match \"css\" } | Select-Object href -First 3; \"---\"; $r.Content.Length)",
+      "Bash(curl -sS --max-time 5 http://localhost:3001/login)",
+      "Bash(taskkill //PID 37548 //F)",
+      "Bash(curl -sS --max-time 10 -o /tmp/login.html http://localhost:3001/login)",
+      "Bash(curl -sS --max-time 10 \"http://localhost:3001/_next/static/css/app/layout.css?v=1777030765154\")",
+      "Bash(taskkill //PID 26024 //F)",
+      "Bash(rm -rf .next)",
+      "Bash(curl -sS --max-time 10 -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3001/login)",
+      "Bash(mv \"public/Logo Dani.png\" \"public/logo.png\")",
+      "Bash(mv \"app/Icon.png.png\" \"app/icon.png\")",
+      "Bash(awk '{print $5}')",
+      "Bash(xargs -I {} taskkill //PID {} //F)",
+      "Bash(curl -sS --max-time 8 -o /dev/null -w \"login=%{http_code} | logo=\" http://localhost:3001/login)",
+      "Bash(curl -sS --max-time 8 -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3001/logo.png)",
+      "Bash(curl -sS --max-time 10 -o /dev/null -w \"login=%{http_code}\\\\n\" http://localhost:3001/login)"
+    ]
+  }
+}
