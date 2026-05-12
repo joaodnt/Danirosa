@@ -563,3 +563,15 @@ returns numeric language sql stable as $$
   where s.enrolled_at::date between p_from and p_until
     and fv.first_view is not null;
 $$;
+
+-- Churn / inativos: alunos churned ou sem atividade nos últimos 30 dias
+create or replace function dashboard_churn()
+returns integer language sql stable as $$
+  select count(*)::integer from students s
+  where s.status = 'churned'
+     or not exists (
+       select 1 from activities a
+       where a.student_id = s.id
+         and a.occurred_at > now() - interval '30 days'
+     );
+$$;
