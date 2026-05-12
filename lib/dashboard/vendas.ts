@@ -20,6 +20,9 @@ export async function getVendasMetrics(period: Period): Promise<VendasMetrics> {
       .lte("occurred_at", period.until)
   ]);
 
+  if (ordersResult.error) console.error("getVendasMetrics: orders query error", ordersResult.error);
+  if (costsResult.error) console.error("getVendasMetrics: manual_costs query error", costsResult.error);
+
   const ordersRows = ordersResult.data ?? [];
   const costsRows = costsResult.data ?? [];
 
