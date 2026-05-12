@@ -4,7 +4,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { parsePeriod, presetToRange } from "@/lib/dashboard/period";
+import { parsePeriod } from "@/lib/dashboard/period";
 import type { PresetKey } from "@/lib/dashboard/types";
 
 const PRESETS: { key: PresetKey; label: string }[] = [
