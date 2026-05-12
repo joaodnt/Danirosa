@@ -457,3 +457,109 @@ cross join lateral (values
 where s.email in ('maria@example.com', 'ana@example.com', 'juliana@example.com', 'bia@example.com')
   and a.occurred_at <= now()
 on conflict do nothing;
+
+-- =====================================================
+-- Dashboard (Vendas + Alunos) — schema da Fase 1
+-- =====================================================
+
+create table if not exists public.manual_costs (
+  id uuid primary key default gen_random_uuid(),
+  label text not null,
+  amount numeric(10,2) not null check (amount >= 0),
+  occurred_at date not null default current_date,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists manual_costs_occurred_at_idx
+  on public.manual_costs(occurred_at desc);
+
+alter table public.manual_costs enable row level security;
+
+drop policy if exists "Authenticated can read manual costs" on public.manual_costs;
+create policy "Authenticated can read manual costs"
+  on public.manual_costs for select to authenticated using (true);
+
+drop policy if exists "Authenticated can write manual costs" on public.manual_costs;
+create policy "Authenticated can write manual costs"
+  on public.manual_costs for insert to authenticated with check (true);
+
+-- Progressão média na "aula/curso atual" dos alunos.
+-- Para cada aluno: último lesson_viewed define o curso atual.
+-- pct = lessons_completed naquele curso / total_lessons no curso.
+-- lessons → modules → courses (lessons.module_id, modules.course_id).
+create or replace function dashboard_progressao_media()
+returns numeric language sql stable as $$
+  with current_course as (
+    select distinct on (a.student_id)
+      a.student_id, (a.metadata->>'course_id')::uuid as course_id
+    from activities a
+    where a.event_type = 'lesson_viewed'
+      and a.metadata ? 'course_id'
+    order by a.student_id, a.occurred_at desc
+  ),
+  per_student as (
+    select cc.student_id,
+      count(*) filter (where a.event_type='lesson_completed')::numeric
+        / nullif((
+          select count(*) from lessons l
+          join modules m on m.id = l.module_id
+          where m.course_id = cc.course_id
+        ), 0) as pct
+    from current_course cc
+    join activities a
+      on a.student_id = cc.student_id
+     and (a.metadata->>'course_id')::uuid = cc.course_id
+    group by cc.student_id, cc.course_id
+  )
+  select coalesce(avg(pct), 0) from per_student;
+$$;
+
+-- Taxa de conclusão (cumulativa, % de alunos que completaram todas as lessons
+-- de pelo menos um curso). Não há event 'course_completed' no app — derivado.
+create or replace function dashboard_taxa_conclusao()
+returns numeric language sql stable as $$
+  with completed_per_course as (
+    select a.student_id, (a.metadata->>'course_id')::uuid as course_id,
+           count(distinct (a.metadata->>'lesson_id')::uuid) as done
+    from activities a
+    where a.event_type = 'lesson_completed'
+      and a.metadata ? 'course_id'
+      and a.metadata ? 'lesson_id'
+    group by a.student_id, (a.metadata->>'course_id')::uuid
+  ),
+  total_per_course as (
+    select c.id as course_id, count(l.*) as total
+    from courses c
+    join modules m on m.course_id = c.id
+    join lessons l on l.module_id = m.id
+    group by c.id
+  ),
+  concluded as (
+    select distinct cpc.student_id
+    from completed_per_course cpc
+    join total_per_course tpc on tpc.course_id = cpc.course_id
+    where cpc.done >= tpc.total and tpc.total > 0
+  )
+  select coalesce(
+    (select count(*) from concluded)::numeric * 100
+    / nullif((select count(*) from students), 0),
+    0
+  );
+$$;
+
+-- Tempo médio (em dias) entre matrícula e 1ª lesson_viewed.
+-- Considera apenas novos alunos do período.
+create or replace function dashboard_tempo_primeira_aula(p_from date, p_until date)
+returns numeric language sql stable as $$
+  select coalesce(avg(
+    extract(epoch from (fv.first_view - s.enrolled_at)) / 86400
+  ), 0)
+  from students s
+  cross join lateral (
+    select min(occurred_at) as first_view
+    from activities
+    where student_id = s.id and event_type = 'lesson_viewed'
+  ) fv
+  where s.enrolled_at::date between p_from and p_until
+    and fv.first_view is not null;
+$$;
