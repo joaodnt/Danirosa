@@ -37,7 +37,7 @@ export async function getVendasMetrics(period: Period): Promise<VendasMetrics> {
   const custosManuais = costsRows.reduce((s, r) => s + Number(r.amount), 0);
 
   const investimento = ads.spend;
-  const cpm = (ads as { cpm?: number }).cpm ?? (ads.impressions > 0 ? (ads.spend / ads.impressions) * 1000 : 0);
+  const cpm = ads.impressions > 0 ? (ads.spend / ads.impressions) * 1000 : 0;
   const cpa = ordersCount > 0 ? investimento / ordersCount : 0;
   const roas = investimento > 0 ? resultado / investimento : 0;
   const lucroReal = resultado - investimento - imposto - plataforma - custosManuais;
