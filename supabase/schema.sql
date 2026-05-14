@@ -499,7 +499,8 @@ returns numeric language sql stable as $$
   ),
   per_student as (
     select cc.student_id,
-      count(*) filter (where a.event_type='lesson_completed')::numeric
+      count(distinct (a.metadata->>'lesson_id')::uuid)
+        filter (where a.event_type='lesson_completed')::numeric
         / nullif((
           select count(*) from lessons l
           join modules m on m.id = l.module_id
