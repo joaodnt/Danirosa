@@ -24,21 +24,39 @@ function formatShortDate(iso: string): string {
   return `${d}/${String(m).padStart(2, "0")}`;
 }
 
+function weekdayIndex(iso: string): number {
+  const [y, m, d] = iso.split("-").map(Number);
+  // Date.UTC avoids local TZ shift
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  // getUTCDay: Sunday=0..Saturday=6 → convert to Monday=0..Sunday=6
+  return (dt.getUTCDay() + 6) % 7;
+}
+
 export function ActivityHeatmap({ data }: Props) {
   const max = data.reduce((m, d) => Math.max(m, d.count), 0);
   const first = data[0]?.date;
   const last = data[data.length - 1]?.date;
 
+  const padding = data.length > 0 ? weekdayIndex(data[0].date) : 0;
+  const cells: ({ type: "pad" } | { type: "day"; day: HeatmapDay })[] = [
+    ...Array.from({ length: padding }, () => ({ type: "pad" as const })),
+    ...data.map((d) => ({ type: "day" as const, day: d }))
+  ];
+
   return (
     <div>
-      <div className="grid grid-cols-15 gap-1" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
-        {data.map((d) => (
-          <div
-            key={d.date}
-            title={`${formatShortDate(d.date)} — ${d.count} eventos`}
-            className={`aspect-square rounded-sm ${levelClass[intensity(d.count, max)]}`}
-          />
-        ))}
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((c, i) =>
+          c.type === "pad" ? (
+            <div key={`pad-${i}`} className="aspect-square" />
+          ) : (
+            <div
+              key={c.day.date}
+              title={`${formatShortDate(c.day.date)} — ${c.day.count} eventos`}
+              className={`aspect-square rounded-sm ${levelClass[intensity(c.day.count, max)]}`}
+            />
+          )
+        )}
       </div>
       <div className="mt-3 flex items-center justify-between text-[10px] text-ink-300">
         <span>{first ? formatShortDate(first) : ""}</span>
