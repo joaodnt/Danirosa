@@ -8,6 +8,65 @@
  * 3. Preencher META_ACCESS_TOKEN e META_AD_ACCOUNT_ID no .env
  */
 
+export type Bucket = "perpetuo" | "lancamento" | "outros";
+
+export type AdFormat = "video" | "image" | "unknown";
+
+export type AdMetrics = {
+  id: string;
+  name: string;
+  campaign: { id: string; name: string; objective: string; bucket: Bucket };
+  format: AdFormat;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  cpc: number;
+  ctr: number;
+  cpm: number;
+  purchases: number;
+  leads: number;
+  costPerPurchase: number | null;
+  costPerLead: number | null;
+  hookRate: number | null;
+  holdRate: number | null;
+  thumbnailUrl: string | null;
+};
+
+export type AggregateMetrics = {
+  spend: number;
+  impressions: number;
+  clicks: number;
+  cpm: number;
+  ctr: number;
+  cpc: number;
+  conversions: number;
+  revenue: number;
+  roas: number;
+};
+
+export type BucketSummary = {
+  bucket: Bucket;
+  ads: AdMetrics[];
+  totalSpend: number;
+  totalResults: number;
+  avgCostPerResult: number;
+};
+
+export type TrafegoFetchError = {
+  code: string;
+  message: string;
+};
+
+export type TrafegoData = {
+  aggregate: AggregateMetrics;
+  perpetuo: BucketSummary;
+  lancamento: BucketSummary;
+  outros: BucketSummary;
+  fetchedAt: string;
+  source: "meta" | "mock";
+  errors: TrafegoFetchError[];
+};
+
 export type TrafficMetrics = {
   spend: number;
   revenue: number;
@@ -79,4 +138,22 @@ function mockMetrics(): TrafficMetrics {
     conversions: 47,
     roas: 18450 / 4820.5
   };
+}
+
+const PERPETUO_OBJECTIVES = new Set([
+  "OUTCOME_SALES",
+  "CONVERSIONS",
+  "PRODUCT_CATALOG_SALES"
+]);
+
+const LANCAMENTO_OBJECTIVES = new Set([
+  "OUTCOME_LEADS",
+  "LEAD_GENERATION",
+  "MESSAGES"
+]);
+
+export function assignBucket(objective: string): Bucket {
+  if (PERPETUO_OBJECTIVES.has(objective)) return "perpetuo";
+  if (LANCAMENTO_OBJECTIVES.has(objective)) return "lancamento";
+  return "outros";
 }
