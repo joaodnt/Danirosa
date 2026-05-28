@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { fetchMetaAdsMetrics } from "@/lib/integrations/meta-ads";
+import { fetchTrafegoData } from "@/lib/integrations/meta-ads";
 import type { Period, VendasMetrics } from "./types";
 
 export async function getVendasMetrics(period: Period): Promise<VendasMetrics> {
@@ -12,7 +12,12 @@ export async function getVendasMetrics(period: Period): Promise<VendasMetrics> {
       .eq("status", "paid")
       .gte("purchased_at", period.from)
       .lte("purchased_at", period.until),
-    fetchMetaAdsMetrics(period.from, period.until),
+    fetchTrafegoData({
+      since: period.from,
+      until: period.until,
+      token: process.env.META_ACCESS_TOKEN,
+      accountId: process.env.META_AD_ACCOUNT_ID
+    }),
     supabase
       .from("manual_costs")
       .select("amount")
@@ -36,8 +41,8 @@ export async function getVendasMetrics(period: Period): Promise<VendasMetrics> {
   const plataforma = resultado * (platPct / 100);
   const custosManuais = costsRows.reduce((s, r) => s + Number(r.amount), 0);
 
-  const investimento = ads.spend;
-  const cpm = ads.impressions > 0 ? (ads.spend / ads.impressions) * 1000 : 0;
+  const investimento = ads.aggregate.spend;
+  const cpm = ads.aggregate.impressions > 0 ? (ads.aggregate.spend / ads.aggregate.impressions) * 1000 : 0;
   const cpa = ordersCount > 0 ? investimento / ordersCount : 0;
   const roas = investimento > 0 ? resultado / investimento : 0;
   const lucroReal = resultado - investimento - imposto - plataforma - custosManuais;

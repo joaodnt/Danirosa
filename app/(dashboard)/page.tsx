@@ -1,5 +1,5 @@
 import { MetricCard } from "@/components/metric-card";
-import { fetchMetaAdsMetrics } from "@/lib/integrations/meta-ads";
+import { fetchTrafegoData } from "@/lib/integrations/meta-ads";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { DollarSign, TrendingUp, Users, Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -20,12 +20,17 @@ function last30Days() {
 export default async function HomePage() {
   const { since, until } = last30Days();
   const [metrics, studentsCount, profile] = await Promise.all([
-    fetchMetaAdsMetrics(since, until),
+    fetchTrafegoData({
+      since,
+      until,
+      token: process.env.META_ACCESS_TOKEN,
+      accountId: process.env.META_AD_ACCOUNT_ID
+    }),
     getStudentsCount(),
     getProfile()
   ]);
 
-  const profit = metrics.revenue - metrics.spend;
+  const profit = metrics.aggregate.revenue - metrics.aggregate.spend;
   const name = profile ? firstName(profile.name) : "";
 
   return (
@@ -40,14 +45,14 @@ export default async function HomePage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Vendas"
-          value={formatCurrency(metrics.revenue)}
+          value={formatCurrency(metrics.aggregate.revenue)}
           delta={12.4}
           icon={DollarSign}
           accent="gold"
         />
         <MetricCard
           label="Investimento"
-          value={formatCurrency(metrics.spend)}
+          value={formatCurrency(metrics.aggregate.spend)}
           delta={-3.2}
           icon={Zap}
           accent="terracotta"
@@ -61,7 +66,7 @@ export default async function HomePage() {
         />
         <MetricCard
           label="ROAS"
-          value={metrics.roas.toFixed(2) + "x"}
+          value={metrics.aggregate.roas.toFixed(2) + "x"}
           delta={4.1}
           icon={TrendingUp}
           accent="sage"
@@ -77,19 +82,19 @@ export default async function HomePage() {
         />
         <MetricCard
           label="Impressões"
-          value={formatNumber(metrics.impressions)}
+          value={formatNumber(metrics.aggregate.impressions)}
           icon={TrendingUp}
           accent="sage"
         />
         <MetricCard
           label="Cliques"
-          value={formatNumber(metrics.clicks)}
+          value={formatNumber(metrics.aggregate.clicks)}
           icon={TrendingUp}
           accent="gold"
         />
         <MetricCard
           label="Conversões"
-          value={formatNumber(metrics.conversions)}
+          value={formatNumber(metrics.aggregate.conversions)}
           icon={TrendingUp}
           accent="terracotta"
         />
