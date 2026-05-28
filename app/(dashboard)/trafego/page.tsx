@@ -19,7 +19,8 @@ import {
   AlertTriangle
 } from "lucide-react";
 
-export const revalidate = 3600;
+// Page é dinâmica por causa de searchParams; o cache de 1h vem do fetch
+// interno em fetchTrafegoData (next: { revalidate: 3600 }).
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();

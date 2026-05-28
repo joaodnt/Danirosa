@@ -46,28 +46,24 @@ export default async function HomePage() {
         <MetricCard
           label="Vendas"
           value={formatCurrency(metrics.aggregate.revenue)}
-          delta={12.4}
           icon={DollarSign}
           accent="gold"
         />
         <MetricCard
           label="Investimento"
           value={formatCurrency(metrics.aggregate.spend)}
-          delta={-3.2}
           icon={Zap}
           accent="terracotta"
         />
         <MetricCard
           label="Lucro (Vendas − Investimento)"
           value={formatCurrency(profit)}
-          delta={18.7}
           icon={TrendingUp}
           accent="brand"
         />
         <MetricCard
           label="ROAS"
           value={metrics.aggregate.roas.toFixed(2) + "x"}
-          delta={4.1}
           icon={TrendingUp}
           accent="sage"
         />
