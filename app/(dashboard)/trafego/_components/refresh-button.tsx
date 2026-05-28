@@ -1,20 +1,19 @@
-// MOCKUP — botão sem revalidate real. Na implementação vai usar server action com revalidatePath.
 "use client";
 
 import { useTransition, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, CheckCircle2 } from "lucide-react";
+import { refreshMetaAds } from "../actions";
 
 export function RefreshButton() {
   const [isPending, startTransition] = useTransition();
   const [justDone, setJustDone] = useState(false);
 
   function refresh() {
-    startTransition(() => {
-      setTimeout(() => {
-        setJustDone(true);
-        setTimeout(() => setJustDone(false), 2000);
-      }, 1200);
+    startTransition(async () => {
+      await refreshMetaAds();
+      setJustDone(true);
+      setTimeout(() => setJustDone(false), 2000);
     });
   }
 
