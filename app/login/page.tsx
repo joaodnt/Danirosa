@@ -1,5 +1,4 @@
 import { LoginForm } from "./login-form";
-import { Handwritten } from "@/components/handwritten";
 
 export default function LoginPage() {
   return (
@@ -14,9 +13,6 @@ export default function LoginPage() {
             className="h-20 w-20 rounded-full object-cover ring-1 ring-brand-600 shadow-xl shadow-black/40"
           />
           <h1 className="mt-4 text-2xl font-semibold text-ink-50 tracking-tight">Dani Rosa</h1>
-          <Handwritten size="md" align="center" className="mt-1">
-            O lado sexy dos vegetais
-          </Handwritten>
         </div>
         <div className="rounded-2xl border border-brand-800 bg-brand-900/80 backdrop-blur p-8 shadow-2xl shadow-black/60">
           <LoginForm />

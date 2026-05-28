@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { AddCompetitorForm } from "./add-form";
 import { CompetitorCard } from "./competitor-card";
-import { Handwritten } from "@/components/handwritten";
 import { Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -29,17 +28,12 @@ export default async function ConcorrentesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-ink-50">Concorrentes</h1>
-          <p className="text-sm text-ink-300">
-            Acompanhe perfis do Instagram e descubra o que converte ·{" "}
-            <strong className="text-accent-gold">{competitors.length}/10</strong> cadastrados
-          </p>
-        </div>
-        <Handwritten size="md" align="right">
-          O lado sexy dos vegetais
-        </Handwritten>
+      <div>
+        <h1 className="text-2xl font-semibold text-ink-50">Concorrentes</h1>
+        <p className="text-sm text-ink-300">
+          Acompanhe perfis do Instagram e descubra o que converte ·{" "}
+          <strong className="text-accent-gold">{competitors.length}/10</strong> cadastrados
+        </p>
       </div>
 
       {slotsLeft > 0 && (

@@ -10,9 +10,9 @@ import {
   GraduationCap,
   Zap,
   Users,
-  BookOpen,
   BarChart3,
-  ChevronDown
+  ChevronDown,
+  Send
 } from "lucide-react";
 
 type NavLink = { href: string; label: string };
@@ -32,11 +32,11 @@ const items: NavItem[] = [
       { href: "/dashboard/alunos", label: "Alunos" }
     ]
   },
-  { type: "link", href: "/membros", label: "Área de membros", icon: BookOpen },
   { type: "link", href: "/trafego", label: "Tráfego pago", icon: TrendingUp },
   { type: "link", href: "/concorrentes", label: "Concorrentes", icon: Users },
   { type: "link", href: "/alunos", label: "Alunos", icon: GraduationCap },
-  { type: "link", href: "/automacoes", label: "Automações", icon: Zap }
+  { type: "link", href: "/automacoes", label: "Automações", icon: Zap },
+  { type: "link", href: "/whatsapp", label: "WhatsApp", icon: Send }
 ];
 
 export function Sidebar() {

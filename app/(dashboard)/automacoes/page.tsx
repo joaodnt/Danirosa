@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Handwritten } from "@/components/handwritten";
 import { Zap, CheckCircle2, Clock, PauseCircle } from "lucide-react";
 
 const automations = [
@@ -38,16 +37,11 @@ const statusStyles = {
 export default function AutomacoesPage() {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-ink-50">Automações</h1>
-          <p className="text-sm text-ink-300">
-            Fluxos automáticos ativos na sua operação
-          </p>
-        </div>
-        <Handwritten size="md" align="right">
-          Cuidar do que realmente importa
-        </Handwritten>
+      <div>
+        <h1 className="text-2xl font-semibold text-ink-50">Automações</h1>
+        <p className="text-sm text-ink-300">
+          Fluxos automáticos ativos na sua operação
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

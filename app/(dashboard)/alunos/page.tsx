@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
-import { Handwritten } from "@/components/handwritten";
 import { Search, GraduationCap, ChevronRight } from "lucide-react";
 
 export const revalidate = 60;
@@ -25,18 +24,11 @@ export default async function AlunosPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-ink-50">Alunos</h1>
-          <p className="text-sm text-ink-300">
-            {students?.length ?? 0} alunos cadastrados
-          </p>
-        </div>
-        <Handwritten size="md" align="right" className="max-w-lg">
-          Cozinhar é uma arte!
-          <br />
-          E cozinhar sem derivados animais é ainda mais gratificante.
-        </Handwritten>
+      <div>
+        <h1 className="text-2xl font-semibold text-ink-50">Alunos</h1>
+        <p className="text-sm text-ink-300">
+          {students?.length ?? 0} alunos cadastrados
+        </p>
       </div>
 
       <div className="relative">

@@ -1,6 +1,4 @@
-import { DailyQuote } from "@/components/daily-quote";
 import { MetricCard } from "@/components/metric-card";
-import { Handwritten } from "@/components/handwritten";
 import { fetchMetaAdsMetrics } from "@/lib/integrations/meta-ads";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { DollarSign, TrendingUp, Users, Zap } from "lucide-react";
@@ -32,18 +30,11 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <DailyQuote name={name} />
-
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-lg font-semibold text-ink-50">
-            {name ? `Olá, ${name} ·` : ""} Visão geral
-          </h1>
-          <p className="text-sm text-ink-300">Últimos 30 dias</p>
-        </div>
-        <Handwritten size="md" align="right" className="max-w-md">
-          Comer é um gesto íntimo, quase secreto
-        </Handwritten>
+      <div>
+        <h1 className="text-lg font-semibold text-ink-50">
+          {name ? `Olá, ${name} ·` : ""} Visão geral
+        </h1>
+        <p className="text-sm text-ink-300">Últimos 30 dias</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -75,12 +66,6 @@ export default async function HomePage() {
           icon={TrendingUp}
           accent="sage"
         />
-      </div>
-
-      <div className="flex items-center justify-center py-2">
-        <Handwritten size="lg" align="center" className="text-accent-gold/70">
-          O prato é altar, e comer... comer é sagrado
-        </Handwritten>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
