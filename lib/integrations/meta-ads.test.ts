@@ -1,5 +1,29 @@
 import { describe, it, expect } from "vitest";
-import { assignBucket, parseAdInsight } from "./meta-ads";
+import { assignBucket, parseAdInsight, rankAdsInBucket } from "./meta-ads";
+import type { AdMetrics } from "./meta-ads";
+
+function makeAd(over: Partial<AdMetrics>): AdMetrics {
+  return {
+    id: "x",
+    name: "x",
+    campaign: { id: "c", name: "c", objective: "OUTCOME_SALES", bucket: "perpetuo" },
+    format: "image",
+    spend: 0,
+    impressions: 0,
+    clicks: 0,
+    cpc: 0,
+    ctr: 0,
+    cpm: 0,
+    purchases: 0,
+    leads: 0,
+    costPerPurchase: null,
+    costPerLead: null,
+    hookRate: null,
+    holdRate: null,
+    thumbnailUrl: null,
+    ...over
+  };
+}
 import {
   VIDEO_AD_INSIGHT,
   STATIC_AD_INSIGHT,
@@ -99,5 +123,52 @@ describe("parseAdInsight", () => {
     expect(ad.leads).toBe(0);
     expect(ad.costPerPurchase).toBeNull();
     expect(ad.costPerLead).toBeNull();
+  });
+});
+
+describe("rankAdsInBucket", () => {
+  it("perpetuo: ordena por menor custo/purchase com >=3 compras", () => {
+    const ads = [
+      makeAd({ id: "a", purchases: 10, costPerPurchase: 25 }),
+      makeAd({ id: "b", purchases: 5, costPerPurchase: 15 }),
+      makeAd({ id: "c", purchases: 4, costPerPurchase: 40 }),
+      makeAd({ id: "d", purchases: 2, costPerPurchase: 10 }) // filtrado: <3 compras
+    ];
+    const ranked = rankAdsInBucket(ads, "perpetuo");
+    expect(ranked.map((a) => a.id)).toEqual(["b", "a", "c"]);
+  });
+
+  it("perpetuo: completa com maior spend quando falta candidato qualificado", () => {
+    const ads = [
+      makeAd({ id: "a", purchases: 5, costPerPurchase: 20, spend: 100 }),
+      makeAd({ id: "b", purchases: 1, costPerPurchase: 10, spend: 500 }),
+      makeAd({ id: "c", purchases: 0, spend: 300 })
+    ];
+    const ranked = rankAdsInBucket(ads, "perpetuo");
+    expect(ranked.map((a) => a.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("lancamento: ordena por menor custo/lead com >=5 leads", () => {
+    const ads = [
+      makeAd({ id: "a", purchases: 0, leads: 100, costPerLead: 9, campaign: { id: "c", name: "c", objective: "OUTCOME_LEADS", bucket: "lancamento" } }),
+      makeAd({ id: "b", purchases: 0, leads: 200, costPerLead: 6, campaign: { id: "c", name: "c", objective: "OUTCOME_LEADS", bucket: "lancamento" } }),
+      makeAd({ id: "c", purchases: 0, leads: 3, costPerLead: 3, campaign: { id: "c", name: "c", objective: "OUTCOME_LEADS", bucket: "lancamento" } })
+    ];
+    const ranked = rankAdsInBucket(ads, "lancamento");
+    expect(ranked.map((a) => a.id)).toEqual(["b", "a", "c"]);
+  });
+
+  it("retorna ate 3 itens", () => {
+    const ads = [
+      makeAd({ id: "a", purchases: 10, costPerPurchase: 10 }),
+      makeAd({ id: "b", purchases: 10, costPerPurchase: 20 }),
+      makeAd({ id: "c", purchases: 10, costPerPurchase: 30 }),
+      makeAd({ id: "d", purchases: 10, costPerPurchase: 40 })
+    ];
+    expect(rankAdsInBucket(ads, "perpetuo").length).toBe(3);
+  });
+
+  it("lista vazia retorna array vazio", () => {
+    expect(rankAdsInBucket([], "perpetuo")).toEqual([]);
   });
 });

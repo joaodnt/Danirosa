@@ -227,6 +227,42 @@ function resolveThumbnailUrl(raw: RawInsight): string | null {
   return raw.creative?.thumbnail_url ?? raw.creative?.image_url ?? null;
 }
 
+// ---------------------------------------------------------------------------
+// rankAdsInBucket
+// ---------------------------------------------------------------------------
+
+const MIN_PURCHASES = 3;
+const MIN_LEADS = 5;
+const TOP_N = 3;
+
+export function rankAdsInBucket(
+  ads: AdMetrics[],
+  bucket: "perpetuo" | "lancamento"
+): AdMetrics[] {
+  const minCount = bucket === "perpetuo" ? MIN_PURCHASES : MIN_LEADS;
+  const getCount = (a: AdMetrics) => (bucket === "perpetuo" ? a.purchases : a.leads);
+  const getCost = (a: AdMetrics) =>
+    bucket === "perpetuo" ? a.costPerPurchase : a.costPerLead;
+
+  const qualified = ads.filter((a) => getCount(a) >= minCount && getCost(a) != null);
+  const rest = ads.filter((a) => !qualified.includes(a));
+
+  qualified.sort((x, y) => {
+    const cx = getCost(x)!;
+    const cy = getCost(y)!;
+    if (cx !== cy) return cx - cy;
+    return y.spend - x.spend; // empate: maior spend
+  });
+
+  rest.sort((x, y) => y.spend - x.spend);
+
+  return [...qualified, ...rest].slice(0, TOP_N);
+}
+
+// ---------------------------------------------------------------------------
+// parseAdInsight
+// ---------------------------------------------------------------------------
+
 export function parseAdInsight(raw: RawInsight): AdMetrics {
   const spend = num(raw.spend);
   const impressions = num(raw.impressions);
