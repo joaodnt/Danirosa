@@ -67,79 +67,6 @@ export type TrafegoData = {
   errors: TrafegoFetchError[];
 };
 
-export type TrafficMetrics = {
-  spend: number;
-  revenue: number;
-  impressions: number;
-  clicks: number;
-  conversions: number;
-  roas: number;
-};
-
-export async function fetchMetaAdsMetrics(
-  since: string,
-  until: string
-): Promise<TrafficMetrics> {
-  const token = process.env.META_ACCESS_TOKEN;
-  const accountId = process.env.META_AD_ACCOUNT_ID;
-
-  if (!token || !accountId) {
-    return mockMetrics();
-  }
-
-  const fields = [
-    "spend",
-    "impressions",
-    "clicks",
-    "actions",
-    "action_values"
-  ].join(",");
-
-  const url =
-    `https://graph.facebook.com/v21.0/act_${accountId}/insights` +
-    `?fields=${fields}` +
-    `&time_range={"since":"${since}","until":"${until}"}` +
-    `&access_token=${token}`;
-
-  const res = await fetch(url, { next: { revalidate: 3600 } });
-  if (!res.ok) {
-    console.error("Meta Ads API error", await res.text());
-    return mockMetrics();
-  }
-
-  const json = await res.json();
-  const row = json.data?.[0] ?? {};
-  const spend = Number(row.spend ?? 0);
-  const revenue = Number(
-    row.action_values?.find((a: { action_type: string }) => a.action_type === "purchase")
-      ?.value ?? 0
-  );
-  const conversions = Number(
-    row.actions?.find((a: { action_type: string }) => a.action_type === "purchase")
-      ?.value ?? 0
-  );
-
-  return {
-    spend,
-    revenue,
-    impressions: Number(row.impressions ?? 0),
-    clicks: Number(row.clicks ?? 0),
-    conversions,
-    roas: spend > 0 ? revenue / spend : 0
-  };
-}
-
-function mockMetrics(): TrafficMetrics {
-  return {
-    spend: 4820.5,
-    revenue: 18450.0,
-    impressions: 245000,
-    clicks: 3820,
-    conversions: 47,
-    roas: 18450 / 4820.5
-  };
-}
-
 const PERPETUO_OBJECTIVES = new Set([
   "OUTCOME_SALES",
   "CONVERSIONS",
@@ -360,5 +287,161 @@ export function parseAdInsight(raw: RawInsight): AdMetrics {
     hookRate,
     holdRate,
     thumbnailUrl: resolveThumbnailUrl(raw)
+  };
+}
+
+// ---------------------------------------------------------------------------
+// fetchTrafegoData orchestrator
+// ---------------------------------------------------------------------------
+
+const META_API_VERSION = "v23.0";
+
+type FetchTrafegoOptions = {
+  since: string;
+  until: string;
+  token: string | undefined;
+  accountId: string | undefined;
+  fetchImpl?: typeof fetch;
+};
+
+const INSIGHT_FIELDS = [
+  "ad_id",
+  "ad_name",
+  "campaign_id",
+  "campaign{id,name,objective}",
+  "creative{thumbnail_url,image_url,video_id}",
+  "spend",
+  "impressions",
+  "clicks",
+  "cpc",
+  "ctr",
+  "cpm",
+  "actions",
+  "cost_per_action_type",
+  "action_values",
+  "video_play_actions",
+  "video_3_sec_watched_actions",
+  "video_thruplay_watched_actions"
+].join(",");
+
+export async function fetchTrafegoData(
+  opts: FetchTrafegoOptions
+): Promise<TrafegoData> {
+  const { since, until, token, accountId } = opts;
+  const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
+  const fetchedAt = new Date().toISOString();
+
+  if (!token || !accountId) {
+    return { ...mockTrafegoData(), fetchedAt, source: "mock", errors: [] };
+  }
+
+  const errors: TrafegoFetchError[] = [];
+  const ads: AdMetrics[] = [];
+  let revenue = 0;
+
+  const firstUrl =
+    `https://graph.facebook.com/${META_API_VERSION}/act_${accountId}/insights` +
+    `?level=ad&limit=500` +
+    `&fields=${encodeURIComponent(INSIGHT_FIELDS)}` +
+    `&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}` +
+    `&access_token=${encodeURIComponent(token)}`;
+
+  let nextUrl: string | null = firstUrl;
+  while (nextUrl) {
+    let res: Response;
+    try {
+      res = await fetchImpl(nextUrl, { next: { revalidate: 3600 } } as RequestInit);
+    } catch (err) {
+      errors.push({ code: "network", message: String(err) });
+      break;
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const code = String(body?.error?.code ?? res.status);
+      const message = String(body?.error?.message ?? `HTTP ${res.status}`);
+      errors.push({ code, message });
+      break;
+    }
+
+    const json = (await res.json()) as {
+      data: RawInsight[];
+      paging?: { next?: string };
+    };
+
+    for (const raw of json.data ?? []) {
+      const ad = parseAdInsight(raw);
+      ads.push(ad);
+      revenue += Number(
+        raw.action_values?.find((a) => a.action_type === "purchase")?.value ?? 0
+      );
+    }
+    nextUrl = json.paging?.next ?? null;
+  }
+
+  if (errors.length > 0 && ads.length === 0) {
+    return { ...mockTrafegoData(), fetchedAt, source: "mock", errors };
+  }
+
+  const aggregate = aggregateAccount(ads);
+  aggregate.revenue = revenue;
+  aggregate.roas = aggregate.spend > 0 ? revenue / aggregate.spend : 0;
+
+  return {
+    aggregate,
+    perpetuo: aggregateBucket(ads.filter((a) => a.campaign.bucket === "perpetuo"), "perpetuo"),
+    lancamento: aggregateBucket(ads.filter((a) => a.campaign.bucket === "lancamento"), "lancamento"),
+    outros: aggregateBucket(ads.filter((a) => a.campaign.bucket === "outros"), "outros"),
+    fetchedAt,
+    source: "meta",
+    errors
+  };
+}
+
+function mockTrafegoData(): Omit<TrafegoData, "fetchedAt" | "source" | "errors"> {
+  const mockAds: AdMetrics[] = [
+    parseAdInsight({
+      ad_id: "mock_1",
+      ad_name: "VSL Risotos | Exemplo",
+      campaign_id: "c1",
+      campaign: { id: "c1", name: "PERP Exemplo", objective: "OUTCOME_SALES" },
+      creative: { thumbnail_url: "" },
+      spend: "2341.50",
+      impressions: "184230",
+      clicks: "5712",
+      cpc: "0.41",
+      ctr: "3.10",
+      cpm: "12.71",
+      actions: [{ action_type: "purchase", value: "78" }],
+      cost_per_action_type: [{ action_type: "purchase", value: "30.02" }],
+      action_values: [{ action_type: "purchase", value: "11700.00" }],
+      video_play_actions: [{ action_type: "video_view", value: "120000" }],
+      video_3_sec_watched_actions: [{ action_type: "video_view", value: "77610" }],
+      video_thruplay_watched_actions: [{ action_type: "video_view", value: "53093" }]
+    }),
+    parseAdInsight({
+      ad_id: "mock_2",
+      ad_name: "Lead Magnet PDF | Exemplo",
+      campaign_id: "c2",
+      campaign: { id: "c2", name: "LANC Exemplo", objective: "OUTCOME_LEADS" },
+      creative: { image_url: "" },
+      spend: "920.40",
+      impressions: "67500",
+      clicks: "2565",
+      cpc: "0.36",
+      ctr: "3.80",
+      cpm: "13.64",
+      actions: [{ action_type: "lead", value: "142" }],
+      cost_per_action_type: [{ action_type: "lead", value: "6.48" }]
+    })
+  ];
+  const aggregate = aggregateAccount(mockAds);
+  aggregate.revenue = 11700;
+  aggregate.roas = aggregate.spend > 0 ? 11700 / aggregate.spend : 0;
+  return {
+    aggregate,
+    perpetuo: aggregateBucket(mockAds.filter((a) => a.campaign.bucket === "perpetuo"), "perpetuo"),
+    lancamento: aggregateBucket(mockAds.filter((a) => a.campaign.bucket === "lancamento"), "lancamento"),
+    outros: aggregateBucket([], "outros")
   };
 }

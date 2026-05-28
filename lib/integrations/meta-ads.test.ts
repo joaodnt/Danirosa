@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assignBucket, parseAdInsight, rankAdsInBucket, aggregateBucket, aggregateAccount } from "./meta-ads";
+import { assignBucket, parseAdInsight, rankAdsInBucket, aggregateBucket, aggregateAccount, fetchTrafegoData } from "./meta-ads";
 import type { AdMetrics } from "./meta-ads";
 
 function makeAd(over: Partial<AdMetrics>): AdMetrics {
@@ -220,5 +220,87 @@ describe("aggregateAccount", () => {
     expect(agg.cpm).toBeCloseTo((300 / 30000) * 1000, 2); // 10
     expect(agg.ctr).toBeCloseTo((800 / 30000) * 100, 2); // 2.67
     expect(agg.cpc).toBeCloseTo(300 / 800, 2); // 0.375
+  });
+});
+
+describe("fetchTrafegoData", () => {
+  function mockFetch(payloads: object[]): typeof fetch {
+    let call = 0;
+    return ((async () => {
+      const body = payloads[call++] ?? payloads[payloads.length - 1];
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }) as unknown) as typeof fetch;
+  }
+
+  it("retorna mock quando sem token", async () => {
+    const data = await fetchTrafegoData({
+      since: "2026-05-01",
+      until: "2026-05-28",
+      token: undefined,
+      accountId: undefined,
+      fetchImpl: globalThis.fetch
+    });
+    expect(data.source).toBe("mock");
+    expect(data.aggregate.spend).toBeGreaterThan(0);
+    expect(data.perpetuo.ads.length).toBeGreaterThan(0);
+  });
+
+  it("fetcha, parseia e agrega quando token presente", async () => {
+    const fetchImpl = mockFetch([
+      {
+        data: [VIDEO_AD_INSIGHT, STATIC_AD_INSIGHT, LEAD_AD_INSIGHT],
+        paging: {}
+      }
+    ]);
+    const data = await fetchTrafegoData({
+      since: "2026-05-01",
+      until: "2026-05-28",
+      token: "TOK",
+      accountId: "1234",
+      fetchImpl
+    });
+    expect(data.source).toBe("meta");
+    expect(data.errors).toEqual([]);
+    expect(data.aggregate.spend).toBeCloseTo(2341.5 + 1872.4 + 920.4, 2);
+    expect(data.perpetuo.ads.length).toBe(2);
+    expect(data.lancamento.ads.length).toBe(1);
+  });
+
+  it("retorna mock + errors quando token invalido (190)", async () => {
+    const fetchImpl = (async () =>
+      new Response(
+        JSON.stringify({ error: { code: 190, message: "Token expired" } }),
+        { status: 401 }
+      )) as unknown as typeof fetch;
+    const data = await fetchTrafegoData({
+      since: "2026-05-01",
+      until: "2026-05-28",
+      token: "BAD",
+      accountId: "1234",
+      fetchImpl
+    });
+    expect(data.source).toBe("mock");
+    expect(data.errors[0].code).toBe("190");
+  });
+
+  it("pagina ate fim quando paging.next presente", async () => {
+    const fetchImpl = mockFetch([
+      {
+        data: [VIDEO_AD_INSIGHT],
+        paging: { next: "https://graph.facebook.com/page2" }
+      },
+      { data: [LEAD_AD_INSIGHT], paging: {} }
+    ]);
+    const data = await fetchTrafegoData({
+      since: "2026-05-01",
+      until: "2026-05-28",
+      token: "TOK",
+      accountId: "1234",
+      fetchImpl
+    });
+    expect(data.perpetuo.ads.length + data.lancamento.ads.length).toBe(2);
   });
 });
