@@ -157,3 +157,129 @@ export function assignBucket(objective: string): Bucket {
   if (LANCAMENTO_OBJECTIVES.has(objective)) return "lancamento";
   return "outros";
 }
+
+// ---------------------------------------------------------------------------
+// parseAdInsight
+// ---------------------------------------------------------------------------
+
+type RawAction = { action_type: string; value: string };
+type RawInsight = {
+  ad_id: string;
+  ad_name: string;
+  campaign_id: string;
+  campaign?: { id: string; name: string; objective: string };
+  creative?: { thumbnail_url?: string; image_url?: string; video_id?: string };
+  spend?: string;
+  impressions?: string;
+  clicks?: string;
+  cpc?: string;
+  ctr?: string;
+  cpm?: string;
+  actions?: RawAction[];
+  cost_per_action_type?: RawAction[];
+  action_values?: RawAction[];
+  video_play_actions?: RawAction[];
+  video_3_sec_watched_actions?: RawAction[];
+  video_thruplay_watched_actions?: RawAction[];
+};
+
+const LEAD_ACTION_TYPES = new Set([
+  "lead",
+  "complete_registration",
+  "submit_application",
+  "onsite_conversion.lead_grouped"
+]);
+
+function num(v: string | undefined): number {
+  return v == null ? 0 : Number(v) || 0;
+}
+
+function actionsSum(
+  actions: RawAction[] | undefined,
+  types: Set<string> | string
+): number {
+  if (!actions) return 0;
+  const match =
+    typeof types === "string"
+      ? (t: string) => t === types
+      : (t: string) => types.has(t);
+  return actions
+    .filter((a) => match(a.action_type))
+    .reduce((s, a) => s + num(a.value), 0);
+}
+
+function actionValue(
+  actions: RawAction[] | undefined,
+  type: string
+): number | null {
+  if (!actions) return null;
+  const found = actions.find((a) => a.action_type === type);
+  return found ? num(found.value) : null;
+}
+
+function inferFormat(raw: RawInsight): AdFormat {
+  if (raw.creative?.video_id || raw.video_play_actions?.length) return "video";
+  if (raw.creative?.image_url || raw.creative?.thumbnail_url) return "image";
+  return "unknown";
+}
+
+function resolveThumbnailUrl(raw: RawInsight): string | null {
+  return raw.creative?.thumbnail_url ?? raw.creative?.image_url ?? null;
+}
+
+export function parseAdInsight(raw: RawInsight): AdMetrics {
+  const spend = num(raw.spend);
+  const impressions = num(raw.impressions);
+  const format = inferFormat(raw);
+
+  const purchases = actionsSum(raw.actions, "purchase");
+  const leads = actionsSum(raw.actions, LEAD_ACTION_TYPES);
+
+  // Custo por purchase: usar cost_per_action_type se a Meta retornou,
+  // caso contrario derivar spend/purchases.
+  const costPerPurchaseMeta = actionValue(raw.cost_per_action_type, "purchase");
+  const costPerPurchase =
+    costPerPurchaseMeta ?? (purchases > 0 ? spend / purchases : null);
+
+  // Custo por lead: como pode somar varios action_types, derivamos sempre de spend/leads
+  // para garantir consistencia com o que a UI vai mostrar.
+  const costPerLead = leads > 0 ? spend / leads : null;
+
+  const v3s =
+    actionValue(raw.video_3_sec_watched_actions, "video_view") ?? 0;
+  const vThru =
+    actionValue(raw.video_thruplay_watched_actions, "video_view") ?? 0;
+  const hookRate =
+    format === "video" && impressions > 0
+      ? (v3s / impressions) * 100
+      : null;
+  const holdRate =
+    format === "video" && v3s > 0 ? (vThru / v3s) * 100 : null;
+
+  const campaignObjective = raw.campaign?.objective ?? "";
+
+  return {
+    id: raw.ad_id,
+    name: raw.ad_name,
+    campaign: {
+      id: raw.campaign?.id ?? raw.campaign_id,
+      name: raw.campaign?.name ?? "(sem nome)",
+      objective: campaignObjective,
+      bucket: assignBucket(campaignObjective)
+    },
+    format,
+    spend,
+    impressions,
+    clicks: num(raw.clicks),
+    cpc: num(raw.cpc),
+    ctr: num(raw.ctr),
+    cpm: num(raw.cpm),
+    purchases,
+    leads,
+    costPerPurchase,
+    costPerLead,
+    hookRate,
+    holdRate,
+    thumbnailUrl: resolveThumbnailUrl(raw)
+  };
+}
