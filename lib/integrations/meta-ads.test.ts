@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assignBucket, parseAdInsight, rankAdsInBucket } from "./meta-ads";
+import { assignBucket, parseAdInsight, rankAdsInBucket, aggregateBucket, aggregateAccount } from "./meta-ads";
 import type { AdMetrics } from "./meta-ads";
 
 function makeAd(over: Partial<AdMetrics>): AdMetrics {
@@ -170,5 +170,55 @@ describe("rankAdsInBucket", () => {
 
   it("lista vazia retorna array vazio", () => {
     expect(rankAdsInBucket([], "perpetuo")).toEqual([]);
+  });
+});
+
+describe("aggregateBucket", () => {
+  it("soma spend, results e calcula custo medio (perpetuo usa purchases)", () => {
+    const ads = [
+      makeAd({ id: "a", spend: 100, purchases: 5 }),
+      makeAd({ id: "b", spend: 200, purchases: 10 })
+    ];
+    const summary = aggregateBucket(ads, "perpetuo");
+    expect(summary.bucket).toBe("perpetuo");
+    expect(summary.totalSpend).toBe(300);
+    expect(summary.totalResults).toBe(15);
+    expect(summary.avgCostPerResult).toBe(20);
+  });
+
+  it("lancamento usa leads como contagem", () => {
+    const ads = [
+      makeAd({
+        id: "a", spend: 100, leads: 20,
+        campaign: { id: "c", name: "c", objective: "OUTCOME_LEADS", bucket: "lancamento" }
+      })
+    ];
+    const summary = aggregateBucket(ads, "lancamento");
+    expect(summary.totalResults).toBe(20);
+    expect(summary.avgCostPerResult).toBe(5);
+  });
+
+  it("avgCostPerResult e 0 quando totalResults e 0", () => {
+    const summary = aggregateBucket([], "perpetuo");
+    expect(summary.totalSpend).toBe(0);
+    expect(summary.totalResults).toBe(0);
+    expect(summary.avgCostPerResult).toBe(0);
+  });
+});
+
+describe("aggregateAccount", () => {
+  it("agrega todos os ads do periodo", () => {
+    const ads = [
+      makeAd({ id: "a", spend: 100, impressions: 10000, clicks: 200, purchases: 5 }),
+      makeAd({ id: "b", spend: 200, impressions: 20000, clicks: 600, leads: 10 })
+    ];
+    const agg = aggregateAccount(ads);
+    expect(agg.spend).toBe(300);
+    expect(agg.impressions).toBe(30000);
+    expect(agg.clicks).toBe(800);
+    expect(agg.conversions).toBe(15); // purchases + leads
+    expect(agg.cpm).toBeCloseTo((300 / 30000) * 1000, 2); // 10
+    expect(agg.ctr).toBeCloseTo((800 / 30000) * 100, 2); // 2.67
+    expect(agg.cpc).toBeCloseTo(300 / 800, 2); // 0.375
   });
 });

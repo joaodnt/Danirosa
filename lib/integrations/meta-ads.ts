@@ -260,6 +260,49 @@ export function rankAdsInBucket(
 }
 
 // ---------------------------------------------------------------------------
+// aggregateBucket + aggregateAccount
+// ---------------------------------------------------------------------------
+
+export function aggregateBucket(ads: AdMetrics[], bucket: Bucket): BucketSummary {
+  const totalSpend = ads.reduce((s, a) => s + a.spend, 0);
+  const totalResults = ads.reduce((s, a) => {
+    if (bucket === "perpetuo") return s + a.purchases;
+    if (bucket === "lancamento") return s + a.leads;
+    return s + a.clicks; // "outros": usa cliques como proxy
+  }, 0);
+  const rankedAds = bucket === "outros"
+    ? [...ads].sort((x, y) => y.spend - x.spend).slice(0, 3)
+    : rankAdsInBucket(ads, bucket);
+  return {
+    bucket,
+    ads: rankedAds,
+    totalSpend,
+    totalResults,
+    avgCostPerResult: totalResults > 0 ? totalSpend / totalResults : 0
+  };
+}
+
+export function aggregateAccount(ads: AdMetrics[]): AggregateMetrics {
+  const spend = ads.reduce((s, a) => s + a.spend, 0);
+  const impressions = ads.reduce((s, a) => s + a.impressions, 0);
+  const clicks = ads.reduce((s, a) => s + a.clicks, 0);
+  const purchases = ads.reduce((s, a) => s + a.purchases, 0);
+  const leads = ads.reduce((s, a) => s + a.leads, 0);
+
+  return {
+    spend,
+    impressions,
+    clicks,
+    conversions: purchases + leads,
+    revenue: 0, // setado em fetchTrafegoData a partir de action_values
+    cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+    ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+    cpc: clicks > 0 ? spend / clicks : 0,
+    roas: 0 // setado quando revenue chegar
+  };
+}
+
+// ---------------------------------------------------------------------------
 // parseAdInsight
 // ---------------------------------------------------------------------------
 
